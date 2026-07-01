@@ -29,14 +29,16 @@ WORKDIR /app
 RUN git clone --depth 1 --branch "v${VERSION}" \
     https://github.com/actualbudget/actual.git .
 
+# Install BEFORE patching: `yarn install` depends only on the lockfile, not on
+# the source file the patch edits. Installing first keeps this (expensive)
+# layer cached when you iterate on the patch — only git apply + build re-run.
+RUN yarn install --immutable
+
 # Apply the schedules name-sort patch.
 # If a future release moves this line, `git apply` fails and the build
 # stops here (loud failure > silently shipping an unpatched bundle).
 COPY schedules-name-sort.patch /tmp/schedules-name-sort.patch
 RUN git apply --verbose /tmp/schedules-name-sort.patch
-
-# Full workspace install (dev deps are needed to build).
-RUN yarn install --immutable
 
 # Build the web bundle with the SAME script the official Docker image uses:
 # `yarn build:server` runs `yarn build:browser` (= ./bin/package-browser),

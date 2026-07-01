@@ -47,6 +47,13 @@ jobs:
             VERSION=${{ inputs.version }}
           tags: ghcr.io/${{ github.repository_owner }}/actual-server-namesort:${{ inputs.version }}
           push: true
+          # Layer caching via the GitHub Actions cache backend.
+          # mode=max caches intermediate (builder-stage) layers too, not just
+          # the final image — that's where yarn install / build:browser live.
+          # Big win when re-running the SAME version; modest on version bumps
+          # (the git-clone layer changes and busts everything after it).
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
 # After a successful run:
 #   - In GitHub > your profile > Packages, set this package to Public
