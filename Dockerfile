@@ -35,14 +35,22 @@ RUN git clone --depth 1 --branch "v${VERSION}" \
 COPY schedules-name-sort.patch /tmp/schedules-name-sort.patch
 RUN git apply --verbose /tmp/schedules-name-sort.patch
 
-# Full workspace install (dev deps needed to build), then build the web
-# bundle and its workspace dependencies. Mirrors the repo's own
-# scoped-build scripts (e.g. build:api = `yarn build --scope=@actual-app/api`).
+# Full workspace install (dev deps are needed to build).
 #
 # If your build host is low on RAM and Vite OOMs, uncomment the next line:
 # ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN yarn install --immutable
-RUN yarn build --scope=@actual-app/web
+
+# Build ONLY the web bundle and its two upstream workspace deps, by invoking
+# each package's own build script directly. Do NOT use
+# `yarn build --scope=@actual-app/web` here: lage walks the graph and also
+# builds dependents like `desktop-electron`, whose build runs electron-builder
+# to package an AppImage/Flatpak and fails on CI runners lacking `flatpak`.
+# The server web bundle needs none of that. Order matters — the web build
+# reads loot-core's build output (../loot-core/lib-dist/*).
+RUN yarn workspace @actual-app/crdt build \
+    && yarn workspace @actual-app/core build \
+    && yarn workspace @actual-app/web build
 # Output: /app/packages/desktop-client/build
 
 # ---------------------------------------------------------------------------
