@@ -36,21 +36,21 @@ COPY schedules-name-sort.patch /tmp/schedules-name-sort.patch
 RUN git apply --verbose /tmp/schedules-name-sort.patch
 
 # Full workspace install (dev deps are needed to build).
-#
-# If your build host is low on RAM and Vite OOMs, uncomment the next line:
-# ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN yarn install --immutable
 
-# Build ONLY the web bundle and its two upstream workspace deps, by invoking
-# each package's own build script directly. Do NOT use
-# `yarn build --scope=@actual-app/web` here: lage walks the graph and also
-# builds dependents like `desktop-electron`, whose build runs electron-builder
-# to package an AppImage/Flatpak and fails on CI runners lacking `flatpak`.
-# The server web bundle needs none of that. Order matters — the web build
-# reads loot-core's build output (../loot-core/lib-dist/*).
-RUN yarn workspace @actual-app/crdt build \
-    && yarn workspace @actual-app/core build \
-    && yarn workspace @actual-app/web build
+# Build the web bundle with the SAME script the official Docker image uses:
+# `yarn build:server` runs `yarn build:browser` (= ./bin/package-browser),
+# which builds @actual-app/crdt, plugins-service, the loot-core BROWSER backend
+# worker (@actual-app/core build:browser -> the "kcab" worker that populates
+# window.Actual), and finally the web app in browser mode. It fetches
+# translations and sets NODE_OPTIONS internally, and touches no Electron.
+#
+# (An earlier `vite build` alone produced a UI with no backend worker, so
+# window.Actual was undefined -> "Cannot read ... ACTUAL_VERSION". And
+# `yarn build --scope=@actual-app/web` via lage wrongly pulled in
+# desktop-electron's electron-builder/Flatpak packaging. This is the correct,
+# official path.)
+RUN yarn build:browser
 # Output: /app/packages/desktop-client/build
 
 # ---------------------------------------------------------------------------
