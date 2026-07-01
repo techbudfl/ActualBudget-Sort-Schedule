@@ -1,0 +1,45 @@
+services:
+  actual_server:
+    # Pulls the image built by GitHub Actions (build.yml) — the Pi never builds.
+    # Replace <your-username> with your GitHub username and keep the tag in sync
+    # with the version you built in the Actions workflow.
+    image: ghcr.io/<your-username>/actual-server-namesort:26.5.2
+    container_name: actual_server
+    environment:
+      - ACTUAL_PORT=5006
+      # ACTUAL_WEB_ROOT (=/web) is baked into the image.
+    volumes:
+      - /opt/actual/actual-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'node src/scripts/health-check.js']
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - default
+
+  caddy:
+    image: ghcr.io/caddybuilds/caddy-cloudflare:latest
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    container_name: caddy
+    restart: unless-stopped
+    volumes:
+      - /opt/actual/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/actual/caddy-data/data:/data
+      - /opt/actual/caddy-data/config:/config
+    ports:
+      - "4433:443"
+    networks:
+      - default
+      - caddy-proxy
+
+networks:
+  caddy-proxy:
+    external: true
+
+# Update flow on the Pi:
+#   docker compose pull && docker compose up -d
+# (after bumping the tag here to match a new Actions build)

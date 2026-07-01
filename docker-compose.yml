@@ -1,0 +1,46 @@
+services:
+  actual_server:
+    # Build the patched image from ./ (Dockerfile + schedules-name-sort.patch).
+    # `image:` names/tags the result so rebuilds are cached and explicit.
+    build:
+      context: .
+      args:
+        VERSION: "26.5.2"
+    image: actual-server-namesort:26.5.2
+    container_name: actual_server
+    environment:
+      - ACTUAL_PORT=5006
+      # ACTUAL_WEB_ROOT is baked into the image (=/web); no need to set it here.
+    volumes:
+      - /opt/actual/actual-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'node src/scripts/health-check.js']
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - default
+
+  caddy:
+    image: ghcr.io/caddybuilds/caddy-cloudflare:latest
+    environment:
+      # Externalized — keep the real token in a gitignored .env file next to
+      # this compose (see .env.example). Rotate the token you pasted earlier.
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    container_name: caddy
+    restart: unless-stopped
+    volumes:
+      - /opt/actual/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/actual/caddy-data/data:/data
+      - /opt/actual/caddy-data/config:/config
+    ports:
+      - "4433:443"
+    networks:
+      - default
+      - caddy-proxy
+
+networks:
+  caddy-proxy:
+    external: true

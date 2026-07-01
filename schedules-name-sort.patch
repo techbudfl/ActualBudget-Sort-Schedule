@@ -1,0 +1,16 @@
+diff --git a/packages/desktop-client/src/components/schedules/index.tsx b/packages/desktop-client/src/components/schedules/index.tsx
+index 0b640bd..bd2071a 100644
+--- a/packages/desktop-client/src/components/schedules/index.tsx
++++ b/packages/desktop-client/src/components/schedules/index.tsx
+@@ -79,7 +79,10 @@ export function Schedules() {
+     [],
+   );
+ 
+-  const schedulesQuery = useMemo(() => q('schedules').select('*'), []);
++  const schedulesQuery = useMemo(
++    () => q('schedules').select('*').orderBy({ name: 'asc' }),
++    [],
++  );
+   const {
+     isLoading: isSchedulesLoading,
+     schedules,
